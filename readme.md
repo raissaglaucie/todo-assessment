@@ -1,32 +1,106 @@
-# To-Do List API
+# **Project: Flask Todo App Deployment using Terraform and Ansible**
 
-## Project Purpose
+## **Prerequisites**
 
-The purpose of this project is to provide a RESTful API for a to-do list application. This API allows users to manage their to-do tasks by providing functionalities to add, retrieve, update, and delete tasks. The API is built using Flask and the data is stored in a MySQL database.
+To successfully deploy the Flask Todo App, the following prerequisites were met:
 
-![Todo list app home](img/home.png)
+- **AWS Account**: Used for provisioning EC2 instances and security groups.
+- **Terraform**: Installed locally for infrastructure provisioning.
+- **Ansible**: Installed locally for configuration management and application deployment.
+- **SSH Key Pair**: Required for secure access to the EC2 instance.
 
-## Tech Stack
+---
 
-- **Flask**: Flask is a lightweight WSGI web application framework. It is designed to make getting started quick and easy, with the ability to scale up to complex applications.
+## **Project Structure**
 
-- **MySQL**: MySQL is a freely available open-source Relational Database Management System (RDBMS) that uses Structured Query Language (SQL). SQL is the most popular language for adding, accessing and managing content in a database.
+The project is organized as follows:
 
-## API Documentation
+```plaintext
+.
+├── terraform/
+│   └── main.tf
+├── ansible/
+│   ├── inventory.ini
+│   └── setup_flask_app.yml
+└── README.md
 
-Below is the list of endpoints for the To-Do List API:
+```
 
-| HTTP Method | Endpoint | Description | Request Body | Example Response |
-|-------------|----------|-------------|--------------|------------------|
-| GET | /todos | Retrieves all tasks | N/A | `[{"description":"Finishing all topics","is_done":true,"task_id":1,"title":"Learning docker"}]` |
-| GET | /todos/<int:task_id> | Retrieves a task by ID | N/A | `{"description":"Finishing all topics","is_done":true,"task_id":1,"title":"Learning docker"}` |
-| POST | /todos | Creates a new task | `{"title": "<title>", "description": "<description>"}` | `{"newly added task":{"description":"<description>","is_done":false,"task_id":2,"title":"<title>"}}` |
-| PUT | /todos/<int:task_id> | Updates an existing task | `{"title": "<title>", "description": "<description>", "is_done": <bool>}` | `{"updated task":{"description":"<description>","is_done":<bool>,"task_id":2,"title":"<title>"}}` |
-| DELETE | /todos/<int:task_id> | Deletes a task | N/A | `{"result":true}` |
+# Deployment Steps
 
-Here, assume actual will come for each filed `<int:task_id>`, `<title>`, `<description>`, and `<bool>`. `<bool>` should be 0 for not done, and 1 for done.
+## Step 1: Infrastructure Provisioning
 
-This project can serve as a backend for any frontend service that needs to-do list functionality. Please make sure to update the `app.config` with your database credentials and other details.
+Navigate to the Terraform directory:
+```plaintext
+cd terraform
+```
+Initialize Terraform:
+```plaintext
+terraform init
+```
+Review the plan and apply the configuration:
+```plaintext
+terraform plan
+terraform apply
+```
 
-Also, change api endpoint in html file.
+# Terraform provisions:
+An -**EC2** instance for hosting the Flask application.
+A -**security** group to allow traffic on ports 22 (SSH), 5000 (Flask app), and optionally 80 (HTTP).
 
+## Step 2: Configure Ansible Control Node
+
+Update inventory.ini with the public IP of the EC2 instance (output from Terraform):
+```plaintext
+[webserver]
+<EC2_PUBLIC_IP> ansible_user=ubuntu ansible_private_key_file=~/.ssh/raissa-east1.pem ansible_python_interpreter=/usr/bin/python3
+```
+## Step 3: Deploy the Application
+Navigate to the Ansible directory:
+```plaintext
+cd ../ansible
+```
+Run the Ansible playbook to configure the EC2 instance and deploy the Flask application:
+```plaintext
+ansible-playbook -i inventory.ini setup_flask_app.yml
+```
+
+The playbook installs the necessary dependencies (Python, Flask, MySQL, etc.).
+Configures the Flask app to connect to MySQL.
+Sets up the Flask application as a systemd service (todoapp.service).
+
+# Verification Steps
+## SSH into the EC2 Instance:
+
+```plaintext
+ssh -i ~/.ssh/raissa-east1.pem ubuntu@<EC2_PUBLIC_IP>
+```
+## Verify Services:
+1 Check MySQL service:
+```plaintext
+sudo systemctl status mysql
+2 Check Flask application service:
+```plaintext
+sudo systemctl status todoapp
+```
+3 Check Application Logs:
+```plaintext
+sudo journalctl -u todoapp
+```
+4 Access the Application:
+-**Open a browser and go to:**
+```plaintext
+http://<EC2_PUBLIC_IP>:5000
+```
+Verify that the to-do list functionality (adding, editing, deleting tasks) works.
+
+# Key Features
+## Infrastructure as Code:
+Used Terraform to provision EC2 instance and security group.
+Outputs public IP for easy integration with Ansible.
+## Configuration Management:
+Used Ansible to automate installation of dependencies, MySQL setup, and Flask deployment.
+Flask app is managed as a systemd service for reliability.
+## Database Integration:
+MySQL database set up on the EC2 instance.
+Flask app connects to MySQL to manage tasks.
